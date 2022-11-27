@@ -7,11 +7,11 @@ A posix shell script for making binary wrapper scripts
 - Tested and used in Bash 5.1.16
 
 ## Usage
-
+Run localw with whatever options you need (check them out with -h):
 ```
-    TOOLBOX_BINARY=distrobox sh localw.sh -b amazing_python_app -s -p "$(which python3)" -t app_container -o "--very-cool-argument"
+    CONTAINER_MANAGER=distrobox ./localw -b amazing_python_app -e ~/.local/bin -r -p "$(which python3)" -c app_container -o "--very-cool-argument"
 ```
-Generates:
+Then it'll generate:
 ```
 #!/bin/sh
 # toolbox_container python_module root_access
@@ -22,4 +22,4 @@ sudo distrobox-enter app_container -- /usr/bin/python3 -m amazing_python_app --v
 
 1. Clone this repository
 2. Run "install"
-3. That's it! It should be installed wherever you specified it!
+3. That's it! It should be installed wherever you specified it! (through the INSTALL_DIR environment variable)
