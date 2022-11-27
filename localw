@@ -11,13 +11,24 @@ EXPORT_LOCATION=""
 EXTRA_OPTIONS=""
 CONTAINER_MANAGER="toolbox"
 print_help() {
-# TODO: LS usage for reference
     cat << EOF
-Usage: ls [OPTION]... [FILE]...
-List information about the FILEs (the current directory by default).
-Sort entries alphabetically if none of -cftuvSUX nor --sort is specified.
+Usage: $(basename $1) [OPTION ...] -b [FILE] -e [DIRECTORY]
+Wraps a binary into a script so that it'll run with other arguments applied when in PATH
 
-    -a, --all       DESCRIPTION
+    -r, --rootfull
+            runs as root
+    -p, --python-path
+            supplied path for python3
+    -c, --container
+            adds wrapper for container managers accordingly
+    -b, --bin
+            the binary that will be used
+    -e, --export-location
+            the export location that will be used
+    -o, --options
+            extra options passed to the binary
+    -h, --help, --usage
+            shows this help
 EOF
     exit 0
 }
