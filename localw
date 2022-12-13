@@ -1,15 +1,15 @@
-#!/usr/bin/bash
-set -e # -x for debugging
+#!/usr/bin/env bash
+set -ex
 
 TAGS=""
 COMMAND=""
-PYTHON_VENV=""
-BINARY_NAME=""
-CONTAINER=""
-SUDO_ACCESS=""
-EXPORT_LOCATION=""
-EXTRA_OPTIONS=""
-CONTAINER_MANAGER="toolbox"
+PYTHON_VENV="${PYTHON_VENV:-}"
+BINARY_NAME="${BINARY_NAME:-}"
+CONTAINER="${CONTAINER:-}"
+SUDO_ACCESS="${SUDO_ACCESS:-}"
+EXPORT_LOCATION="${EXPORT_LOCATION:-}"
+EXTRA_OPTIONS="${EXTRA_OPTIONS:-}"
+CONTAINER_MANAGER="${CONTAINER_MANAGER:-toolbox}"
 print_help() {
     cat << EOF
 Usage: $(basename $1) [OPTION ...] -b [FILE] -e [DIRECTORY]
@@ -124,5 +124,4 @@ fi
 #!/bin/sh
 # $TAGS
 ${COMMAND} "\$@"
-EOF
-} | tee "$EXPORT_LOCATION" && chmod +x "$EXPORT_LOCATION"
+EOF } | tee "$EXPORT_LOCATION" && chmod +x "$EXPORT_LOCATION"
