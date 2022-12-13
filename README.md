@@ -21,5 +21,6 @@ sudo distrobox-enter app_container -- /usr/bin/python3 -m amazing_python_app --v
 ## Installation
 
 1. Clone this repository
-2. Run "install"
-3. That's it! It should be installed wherever you specified it! (through the INSTALL_DIR environment variable)
+2. Make the script executable with chmod or something like that
+3. Copy the script to a folder in your PATH
+4. That's it!
