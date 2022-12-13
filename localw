@@ -91,12 +91,16 @@ done
 [ -z "$BINARY_NAME" ] && blocking_error "Binary name was not defined, specify it with \"-b\""
 [ -z "$EXPORT_LOCATION" ] && blocking_error "Please specify an export location"
 [ ! -d "$EXPORT_LOCATION" ] && blocking_error "The export location must be an existing directory"
+
 COMMAND="$BINARY_NAME"
 EXPORT_LOCATION="${EXPORT_LOCATION}/${BINARY_NAME##.*}"
 
 if [ -n "$PYTHON_VENV" ] ; then
-    has "$PYTHON_VENV" || error "Python3 interpreter not found: $PYTHON_VENV"
-    push_back "$PYTHON_VENV" -m
+    if ! has "$PYTHON_VENV" ; then
+        error "Python3 interpreter not found: $PYTHON_VENV"
+    fi
+    
+    push_back "$PYTHON_VENV" '-m'
 fi
 
 if [ -n "$CONTAINER" ] ; then
@@ -105,13 +109,19 @@ if [ -n "$CONTAINER" ] ; then
     elif ! "${CONTAINER_BACKEND:-/usr/bin/podman}" container exists "${CONTAINER}" ; then
         error "Container does not exist: ${CONTAINER}"
     fi
-    if ! has "${CONTAINER_MANAGER:-/usr/bin/toolbox}" ; then
+
+    local CONTAINER_MANAGER_BASE = "$(basename ${CONTAINER_MANAGER:-/usr/bin/toolbox})"
+
+    if ! has "${CONTAINER_MANAGER_BASE}" ; then
         error "Toolbox binary not found in path"
     fi
-    if [ "${CONTAINER_MANAGER}" = "toolbox" ] ; then
+    
+    if [ "${CONTAINER_MANAGER_BASE}" = "toolbox" ] ; then
         push_back "${CONTAINER_MANAGER:-/usr/bin/toolbox}" run -c "${CONTAINER}" "--"
-    elif [ "${CONTAINER_MANAGER}" = "distrobox" ] ; then
-        push_back "distrobox-enter" "${CONTAINER}" "--"
+    elif [ "${CONTAINER_MANAGER_BASE}" = "distrobox" ] ; then
+        push_back "${CONTAINER_MANAGER}" "enter" "${CONTAINER}" "--"
+    elif [ "${CONTAINER_MANAGER_BASE}" = "apx" ] ; then
+        push_back "${CONTAINER_MANAGER:-/usr/bin/apx}" run
     else
         blocking_error "Container manager program is not supported!"
     fi
