@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 set -ex
 
+#-#
 TAGS=""
 COMMAND=""
+CHECKS="${CHECKS:-1}"
 PYTHON_VENV="${PYTHON_VENV:-}"
 BINARY_NAME="${BINARY_NAME:-}"
-CONTAINER="${CONTAINER:-}"
-SUDO_ACCESS="${SUDO_ACCESS:-}"
-EXPORT_LOCATION="${EXPORT_LOCATION:-}"
+CONTAINER="${CONTAINER:-fedora-toolbox}"
+SUDO="${SUDO:-0}"
+EXPORT_LOCATION="${EXPORT_LOCATION:-$HOME/.local/bin}"
 EXTRA_OPTIONS="${EXTRA_OPTIONS:-}"
 CONTAINER_MANAGER="${CONTAINER_MANAGER:-toolbox}"
+#-#
 print_help() {
     cat << EOF
-Usage: $(basename $1) [OPTION ...] -b [FILE] -e [DIRECTORY]
+Usage: "$(basename "$1")" [OPTION ...] -b [FILE] -e [DIRECTORY]
 Wraps a binary into a script so that it'll run with other arguments applied when in PATH
 
     -r, --rootfull - runs as root
@@ -27,57 +30,67 @@ EOF
 has() { command -v "$1" &> '/dev/null' ;}
 add_tag() { TAGS="$* $TAGS" ;}
 push_back() { COMMAND="$* $COMMAND" ;}
-error() { printf "%s\n" "$*" >&2 ;}
-blocking_error() { error "$*" ; exit 1 ;}
+error() { 
+    [ "$CHECKS" = 0 ] && printf "%s\n" "$*" > /dev/null && return 0
+    printf "%s\n" "$*" >&2 
+}
+blocking_error() { 
+    error "$*" 
+    [ "$CHECKS" = 1 ] && exit 1 
+}
+#-#
 add_tag 'local-wrapper'
 
 while :; do
     case "$1" in
-        -r|--rootfull)
-            SUDO="1"
+        "-r"|"--rootfull")
+            SUDO=1
             add_tag "root_access"
             shift
             ;;
-        -p|--python-path)
-            if [ -n "$2" ] ; then
-                PYTHON_VENV="$2"
-                add_tag "python_module"
-                shift
-                shift
-            fi
+        "--rootfull-container")
+            #SUDO_CONTAINER=1
+            add_tag "rootfull_container"
+            shift
+            ;;
+        "-p"|"--python-path")
+            [ -z "$2" ] && continue
+            PYTHON_VENV="$2" 
+            add_tag "python_module" 
+            shift 
+            shift
             ;;
         -c|--container)
-            if [ -n "$2" ] ; then
-                CONTAINER="$2"
-                add_tag "toolbox_container"
-                shift
-                shift
-            fi
+            [ -z "$2" ] && continue
+            CONTAINER="$2" 
+            add_tag "toolbox_container" 
+            shift 
+            shift
             ;;
         -b|--bin)
-            if [ -n "$2" ] ; then
-                BINARY_NAME="$2"
-                shift
-                shift
-            fi
+            [ -z "$2" ] && continue
+            BINARY_NAME="$2" 
+            shift 
+            shift
             ;;
         -e|--export)
-            if [ -n "$2" ] ; then
-                EXPORT_LOCATION="$2"
-                shift
-                shift
-            fi
+            [ -z "$2" ] && continue
+            EXPORT_LOCATION="$2"
+            shift 
+            shift
             ;;
         -o|--options)
-            if [ -n "$2" ] ; then
-                EXTRA_OPTIONS="$2"
-                shift
-                shift
-            fi
+            [ -z "$2" ] && continue
+            EXTRA_OPTIONS="$2" 
+            shift 
+            shift
+            ;;
+        --no-checks)
+            CHECKS=0
+            shift
             ;;
         -h|--help|--usage)
-            print_help "$0"
-            exit 0
+            print_help "$0" ; exit 0
             ;;
         -*)
             blocking_error "Unknown option $1"
@@ -88,12 +101,12 @@ while :; do
     esac
 done
 
+EXPORT_LOCATION="${EXPORT_LOCATION}/${BINARY_NAME##.*}"
+push_back "$BINARY_NAME"
+
 [ -z "$BINARY_NAME" ] && blocking_error "Binary name was not defined, specify it with \"-b\""
 [ -z "$EXPORT_LOCATION" ] && blocking_error "Please specify an export location"
 [ ! -d "$EXPORT_LOCATION" ] && blocking_error "The export location must be an existing directory"
-
-COMMAND="$BINARY_NAME"
-EXPORT_LOCATION="${EXPORT_LOCATION}/${BINARY_NAME##.*}"
 
 if [ -n "$PYTHON_VENV" ] ; then
     if ! has "$PYTHON_VENV" ; then
@@ -110,28 +123,23 @@ if [ -n "$CONTAINER" ] ; then
         error "Container does not exist: ${CONTAINER}"
     fi
 
-    local CONTAINER_MANAGER_BASE = "$(basename ${CONTAINER_MANAGER:-/usr/bin/toolbox})"
-
-    if ! has "${CONTAINER_MANAGER_BASE}" ; then
-        error "Toolbox binary not found in path"
-    fi
-    
-    if [ "${CONTAINER_MANAGER_BASE}" = "toolbox" ] ; then
-        push_back "${CONTAINER_MANAGER:-/usr/bin/toolbox}" run -c "${CONTAINER}" "--"
-    elif [ "${CONTAINER_MANAGER_BASE}" = "distrobox" ] ; then
-        push_back "${CONTAINER_MANAGER}" "enter" "${CONTAINER}" "--"
-    elif [ "${CONTAINER_MANAGER_BASE}" = "apx" ] ; then
-        push_back "${CONTAINER_MANAGER:-/usr/bin/apx}" run
-    else
-        blocking_error "Container manager program is not supported!"
-    fi
+    case "$(basename "${CONTAINER_MANAGER}")" in
+        "toolbox")
+            push_back "${CONTAINER_MANAGER:-/usr/bin/toolbox}" run -c "${CONTAINER}" "--"
+        ;;
+        "distrobox")
+            push_back "${CONTAINER_MANAGER}" "enter" "${CONTAINER}" "--"
+        ;;
+        "apx")
+            push_back "${CONTAINER_MANAGER:-/usr/bin/apx}" run
+        ;;
+        *)
+            error "Toolbox binary not found in path"
+        ;;
+    esac
 fi
 
-[ -n "$SUDO" ] && push_back "${SUDO_PROGRAM-sudo}"
+[ "$SUDO" = 1 ] && push_back "${SUDO_PROGRAM-sudo}"
 [ -n "$EXTRA_OPTIONS" ] && COMMAND="$COMMAND $EXTRA_OPTIONS"
 
-{ cat << EOF
-#!/bin/sh
-# $TAGS
-${COMMAND} "\$@"
-EOF } | tee "$EXPORT_LOCATION" && chmod +x "$EXPORT_LOCATION"
+printf "#!/bin/sh\n# %s\n%s \$@" "$TAGS" "${COMMAND}"
